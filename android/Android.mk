@@ -10,6 +10,7 @@ ifneq ($(filter true, $(BOARD_LIBCAMERA_USES_MESON_BUILD)),)
 
 LOCAL_PATH := $(call my-dir)
 LIBCAMERA_TOP := $(dir $(LOCAL_PATH))
+LIBCAMERA_MESON_VERSION := .0.0.1
 
 include $(CLEAR_VARS)
 
@@ -43,7 +44,7 @@ else
 LOCAL_SRC_FILES := $(call relative_top_path,$(LOCAL_PATH))$($3)
 endif
 LOCAL_CHECK_ELF_FILES := false
-LOCAL_MODULE_SUFFIX := .so
+LOCAL_MODULE_SUFFIX := .so$(${4})
 include $(BUILD_PREBUILT)
 include $(CLEAR_VARS)
 endef
@@ -53,13 +54,13 @@ include $(CLEAR_VARS)
 LOCAL_SHARED_LIBRARIES := $(__MY_SHARED_LIBRARIES)
 
 # Modules 'libcamera', produces '/vendor/lib{64}/libcamera.so'
-$(eval $(call libcamera-lib,libcamera,,LIBCAMERA_BIN))
+$(eval $(call libcamera-lib,libcamera,,LIBCAMERA_BIN,LIBCAMERA_MESON_VERSION))
 # Modules 'libcamera-base', produces '/vendor/lib{64}/libcamera-base.so'
-$(eval $(call libcamera-lib,libcamera-base,,LIBCAMERA_BASE_BIN))
+$(eval $(call libcamera-lib,libcamera-base,,LIBCAMERA_BASE_BIN,LIBCAMERA_MESON_VERSION))
 
 LOCAL_SHARED_LIBRARIES += libcamera libcamera-base
 # Modules 'camera.libcamera', produces '/vendor/lib{64}/hw/camera.libcamera.so' HAL
-$(eval $(call libcamera-lib,camera.libcamera,hw,LIBCAMERA_HAL_BIN))
+$(eval $(call libcamera-lib,camera.libcamera,hw,LIBCAMERA_HAL_BIN,))
 
 #-------------------------------------------------------------------------------
 
