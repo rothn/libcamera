@@ -49,23 +49,6 @@ include $(BUILD_PREBUILT)
 include $(CLEAR_VARS)
 endef
 
-define libcamera-exec
-# NOTE: These must be included in LOCAL_SHARED_LIBRARIES to be copied to /vendor/bin.
-LOCAL_MODULE_CLASS := EXECUTABLES
-LOCAL_MODULE_SUFFIX :=
-LOCAL_MODULE := $1
-LOCAL_VENDOR_MODULE := true
-ifdef TARGET_2ND_ARCH
-LOCAL_SRC_FILES_$(TARGET_ARCH) := $(call relative_top_path,$(LOCAL_PATH))$($2)
-LOCAL_SRC_FILES_$(TARGET_2ND_ARCH) := $(call relative_top_path,$(LOCAL_PATH))$(2ND_$2)
-else
-LOCAL_SRC_FILES := $(call relative_top_path,$(LOCAL_PATH))$($2)
-endif
-LOCAL_CHECK_ELF_FILES := false
-include $(BUILD_PREBUILT)
-include $(CLEAR_VARS)
-endef
-
 __MY_SHARED_LIBRARIES := $(LOCAL_SHARED_LIBRARIES)
 include $(CLEAR_VARS)
 LOCAL_SHARED_LIBRARIES := $(__MY_SHARED_LIBRARIES)
@@ -76,11 +59,8 @@ $(eval $(call libcamera-lib,libcamera,,LIBCAMERA_BIN,LIBCAMERA_MESON_VERSION))
 $(eval $(call libcamera-lib,libcamera-base,,LIBCAMERA_BASE_BIN,LIBCAMERA_MESON_VERSION))
 # Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_rkisp1.so'
 $(eval $(call libcamera-lib,ipa_rkisp1,,LIBCAMERA_IPA_RKISP1_BIN,))
-# Modules 'rkisp1_ipa_proxy', produces '/vendor/bin/rkisp1_ipa_proxy'
-$(eval $(call libcamera-exec,rkisp1_ipa_proxy,LIBCAMERA_IPA_RKISP1_PROXY))
-$(eval $(call libcamera-lib,rkisp1_ipa_proxy,,LIBCAMERA_IPA_RKISP1_PROXY,))
 
-LOCAL_SHARED_LIBRARIES += libcamera libcamera-base ipa_rkisp1 rkisp1_ipa_proxy
+LOCAL_SHARED_LIBRARIES += libcamera libcamera-base ipa_rkisp1
 # Modules 'camera.libcamera', produces '/vendor/lib{64}/hw/camera.libcamera.so' HAL
 $(eval $(call libcamera-lib,camera.libcamera,hw,LIBCAMERA_HAL_BIN,))
 

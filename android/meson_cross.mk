@@ -54,11 +54,15 @@ MESON_GEN_FILES_TARGET                   := $(MESON_GEN_DIR)/.timestamp
 $(M_TARGET_PREFIX)LIBCAMERA_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera.so
 $(M_TARGET_PREFIX)LIBCAMERA_HAL_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera-hal.so
 $(M_TARGET_PREFIX)LIBCAMERA_BASE_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera-base.so
+$(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_rkisp1.so
+$(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_PROXY := $(MESON_OUT_DIR)/install/usr/local/libexec/libcamera/rkisp1_ipa_proxy
 
 LIBCAMERA_BINS := \
 	$($(M_TARGET_PREFIX)LIBCAMERA_BIN) \
 	$($(M_TARGET_PREFIX)LIBCAMERA_HAL_BIN) \
-	$($(M_TARGET_PREFIX)LIBCAMERA_BASE_BIN)
+	$($(M_TARGET_PREFIX)LIBCAMERA_BASE_BIN) \
+	$($(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_BIN) \
+	$($(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_PROXY)
 
 MESON_GEN_NINJA := \
 	cd $(MESON_OUT_DIR) && PATH=/usr/bin:/usr/local/bin:$$PATH meson ./build \
@@ -68,7 +72,8 @@ MESON_GEN_NINJA := \
 	-Dipas=$(subst $(space),$(comma),$(BOARD_LIBCAMERA_IPAS))                \
 	-Dpipelines=$(subst $(space),$(comma),$(BOARD_LIBCAMERA_PIPELINES))      \
 	-Dsysconfdir=/vendor/etc                                                 \
-	-Dtest=false
+	-Dtest=false                                                             \
+	-Dallow_unsigned_ipas_in_process=true
 
 MESON_BUILD := PATH=/usr/bin:/bin:/sbin:$$PATH ninja -C $(MESON_OUT_DIR)/build
 
