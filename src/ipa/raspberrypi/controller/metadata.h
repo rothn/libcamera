@@ -13,9 +13,18 @@
 #include <mutex>
 #include <string>
 
+#if defined(__clang__) && __clang__
+#define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
+#else
+#define THREAD_ANNOTATION_ATTRIBUTE__(x)  // no-op
+#endif
+#define CAPABILITY(x) THREAD_ANNOTATION_ATTRIBUTE__(capability(x))
+#define ACQUIRE(...) THREAD_ANNOTATION_ATTRIBUTE__(acquire_capability(__VA_ARGS__))
+#define RELEASE(...) THREAD_ANNOTATION_ATTRIBUTE__(release_capability(__VA_ARGS__))
+
 namespace RPiController {
 
-class Metadata
+class CAPABILITY("mutex") Metadata
 {
 public:
 	Metadata() = default;
@@ -103,8 +112,8 @@ public:
 	 * locks with the standard lock classes.
 	 * e.g. std::lock_guard<RPiController::Metadata> lock(metadata)
 	 */
-	void lock() { mutex_.lock(); }
-	void unlock() { mutex_.unlock(); }
+	void lock() ACQUIRE() { mutex_.lock(); }
+	void unlock() RELEASE() { mutex_.unlock(); }
 
 private:
 	mutable std::mutex mutex_;

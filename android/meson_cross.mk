@@ -55,11 +55,11 @@ $(M_TARGET_PREFIX)LIBCAMERA_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcam
 $(M_TARGET_PREFIX)LIBCAMERA_HAL_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera-hal.so
 $(M_TARGET_PREFIX)LIBCAMERA_BASE_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera-base.so
 $(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_rkisp1.so
-$(M_TARGET_PREFIX)LIBCAMERA_IPA_RASPBERRYPI_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_raspberrypi.so
+$(M_TARGET_PREFIX)LIBCAMERA_IPA_RASPBERRYPI_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_rpi.so
 $(M_TARGET_PREFIX)LIBCAMERA_IPA_IPU3_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_ipu3.so
 $(M_TARGET_PREFIX)LIBCAMERA_IPA_VIMC_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_vimc.so
 $(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/rkisp1
-$(M_TARGET_PREFIX)LIBCAMERA_IPA_RASPBERRYPI_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/raspberrypi
+$(M_TARGET_PREFIX)LIBCAMERA_IPA_RASPBERRYPI_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/rpi
 $(M_TARGET_PREFIX)LIBCAMERA_IPA_IPU3_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/ipu3
 $(M_TARGET_PREFIX)LIBCAMERA_IPA_VIMC_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/vimc
 

@@ -93,8 +93,11 @@ void Lux::process(StatisticsPtr &stats, Metadata *imageMetadata)
 		/* add .5 to reflect the mid-points of bins */
 		double currentY = sum / (double)num + .5;
 		double gainRatio = referenceGain_ / currentGain;
+        /* TODO(Bug 159): Workaround for LLVM bug. */
+		double referenceShutterSpeedDouble = referenceShutterSpeed_.get<std::nano>();
+		double deviceShutterSpeed = deviceStatus.shutterSpeed.get<std::nano>();
 		double shutterSpeedRatio =
-			referenceShutterSpeed_ / deviceStatus.shutterSpeed;
+			referenceShutterSpeedDouble / deviceShutterSpeed;
 		double apertureRatio = referenceAperture_ / currentAperture;
 		double yRatio = currentY * (65536 / numBins) / referenceY_;
 		double estimatedLux = shutterSpeedRatio * gainRatio *
