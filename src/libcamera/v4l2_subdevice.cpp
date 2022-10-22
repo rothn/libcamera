@@ -388,11 +388,14 @@ int V4L2Subdevice::getSelection(unsigned int pad, unsigned int target,
 	sel.target = target;
 	sel.flags = 0;
 
+
+
 	int ret = ioctl(VIDIOC_SUBDEV_G_SELECTION, &sel);
 	if (ret < 0) {
 		LOG(V4L2, Error)
 			<< "Unable to get rectangle " << target << " on pad "
-			<< pad << ": " << strerror(-ret);
+			<< pad << ": " << strerror(-ret)
+            << "  device path: " << devicePath() << "  device node: " << deviceNode();
 		return ret;
 	}
 

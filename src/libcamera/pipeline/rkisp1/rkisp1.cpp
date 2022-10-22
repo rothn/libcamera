@@ -994,15 +994,23 @@ int PipelineHandlerRkISP1::initLinks(Camera *camera,
 int PipelineHandlerRkISP1::createCamera(MediaEntity *sensor)
 {
 	int ret;
+    
+    LOG(RkISP1, Info) << "Entered createCamera()";
+
 
 	std::unique_ptr<RkISP1CameraData> data =
 		std::make_unique<RkISP1CameraData>(this, &mainPath_,
 						   hasSelfPath_ ? &selfPath_ : nullptr);
+    LOG(RkISP1, Info) << "Created RkISP1CameraData";
 
 	data->sensor_ = std::make_unique<CameraSensor>(sensor);
+    LOG(RkISP1, Info) << "Created CameraSensor";
 	ret = data->sensor_->init();
-	if (ret)
+    LOG(RkISP1, Info) << "Initialized CameraSensor";
+	if (ret) {
+        LOG(RkISP1, Error) << "Finished (failure 1) createCamera()";
 		return ret;
+    }
 
 	/* Initialize the camera properties. */
 	data->properties_ = data->sensor_->properties();
@@ -1024,8 +1032,10 @@ int PipelineHandlerRkISP1::createCamera(MediaEntity *sensor)
 				 &DelayedControls::applyControls);
 
 	ret = data->loadIPA(media_->hwRevision());
-	if (ret)
+	if (ret) {
+        LOG(RkISP1, Error) << "Finished (failure 2) createCamera()";
 		return ret;
+    }
 
 	std::set<Stream *> streams{
 		&data->mainPathStream_,
@@ -1035,6 +1045,8 @@ int PipelineHandlerRkISP1::createCamera(MediaEntity *sensor)
 	std::shared_ptr<Camera> camera =
 		Camera::create(std::move(data), id, streams);
 	registerCamera(std::move(camera));
+
+    LOG(RkISP1, Info) << "Finished (success) createCamera()";
 
 	return 0;
 }
@@ -1063,6 +1075,7 @@ bool PipelineHandlerRkISP1::match(DeviceEnumerator *enumerator)
 	hasSelfPath_ = !!media_->getEntityByName("rkisp1_selfpath");
 
 	/* Create the V4L2 subdevices we will need. */
+	LOG(RkISP1, Info) << "Creating rkisp1_isp subdevice";
 	isp_ = V4L2Subdevice::fromEntityName(media_, "rkisp1_isp");
 	if (isp_->open() < 0)
 		return false;

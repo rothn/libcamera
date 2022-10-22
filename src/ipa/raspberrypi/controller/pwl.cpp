@@ -136,8 +136,8 @@ Pwl Pwl::inverse(bool *trueInverse, const double eps) const
 	for (Point const &p : points_) {
 		if (inverse.empty())
 			inverse.append(p.y, p.x, eps);
-		else if (std::abs(inverse.points_.back().x - p.y) <= eps ||
-			 std::abs(inverse.points_.front().x - p.y) <= eps)
+		else if (std::fabs(inverse.points_.back().x - p.y) <= eps ||
+			 std::fabs(inverse.points_.front().x - p.y) <= eps)
 			/* do nothing */;
 		else if (p.y > inverse.points_.back().x) {
 			inverse.append(p.y, p.x, eps);
@@ -168,7 +168,7 @@ Pwl Pwl::compose(Pwl const &other, const double eps) const
 	while (thisSpan != (int)points_.size() - 1) {
 		double dx = points_[thisSpan + 1].x - points_[thisSpan].x,
 		       dy = points_[thisSpan + 1].y - points_[thisSpan].y;
-		if (abs(dy) > eps &&
+		if (std::fabs(dy) > eps &&
 		    otherSpan + 1 < (int)other.points_.size() &&
 		    points_[thisSpan + 1].y >=
 			    other.points_[otherSpan + 1].x + eps) {
@@ -181,7 +181,7 @@ Pwl Pwl::compose(Pwl const &other, const double eps) const
 				 points_[thisSpan].y) *
 					dx / dy;
 			thisY = other.points_[++otherSpan].x;
-		} else if (abs(dy) > eps && otherSpan > 0 &&
+		} else if (std::fabs(dy) > eps && otherSpan > 0 &&
 			   points_[thisSpan + 1].y <=
 				   other.points_[otherSpan - 1].x - eps) {
 			/*

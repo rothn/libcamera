@@ -464,6 +464,7 @@ Logger *Logger::instance()
  */
 void Logger::write(const LogMessage &msg)
 {
+    syslog(LOG_WARNING, "%s", msg.msg().c_str());
 	std::shared_ptr<LogOutput> output = std::atomic_load(&output_);
 	if (!output)
 		return;
@@ -625,8 +626,11 @@ void Logger::parseLogFile()
 void Logger::parseLogLevels()
 {
 	const char *debug = utils::secure_getenv("LIBCAMERA_LOG_LEVELS");
-	if (!debug)
+	if (!debug) {
+        syslog(LOG_ERR, "Could not find LIBCAMERA_LOG_LEVELS in env");
 		return;
+    }
+    syslog(LOG_WARNING, "LIBCAMERA_LOG_LEVELS is %s", debug);
 
 	for (const char *pair = debug; *debug != '\0'; pair = debug) {
 		const char *comma = strchrnul(debug, ',');

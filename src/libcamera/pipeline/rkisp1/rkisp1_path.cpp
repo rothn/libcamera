@@ -33,10 +33,12 @@ bool RkISP1Path::init(MediaDevice *media)
 	std::string resizer = std::string("rkisp1_resizer_") + name_ + "path";
 	std::string video = std::string("rkisp1_") + name_ + "path";
 
+    LOG(RkISP1, Debug) << "Creating " << resizer;
 	resizer_ = V4L2Subdevice::fromEntityName(media, resizer);
 	if (resizer_->open() < 0)
 		return false;
 
+    LOG(RkISP1, Debug) << "Creating " << video;
 	video_ = V4L2VideoDevice::fromEntityName(media, video);
 	if (video_->open() < 0)
 		return false;
