@@ -63,7 +63,8 @@ void CamHelper::process([[maybe_unused]] StatisticsPtr &stats,
 
 uint32_t CamHelper::exposureLines(const Duration exposure, const Duration lineLength) const
 {
-	return exposure / lineLength;
+	/* TODO(Bug 159): Workaround for LLVM bug. */
+	return exposure.get<std::nano>() / lineLength.get<std::nano>();
 }
 
 Duration CamHelper::exposure(uint32_t exposureLines, const Duration lineLength) const
@@ -84,9 +85,11 @@ std::pair<uint32_t, uint32_t> CamHelper::getBlanking(Duration &exposure,
 	 *
 	 * frameLengthMax gets calculated on the smallest line length as we do
 	 * not want to extend that unless absolutely necessary.
+	 *
+	 * TODO(Bug 159): Workaround for LLVM bug.
 	 */
-	frameLengthMin = minFrameDuration / mode_.minLineLength;
-	frameLengthMax = maxFrameDuration / mode_.minLineLength;
+	frameLengthMin = minFrameDuration.get<std::nano>() / mode_.minLineLength.get<std::nano>();
+	frameLengthMax = maxFrameDuration.get<std::nano>() / mode_.minLineLength.get<std::nano>();
 
 	/*
 	 * Watch out for (exposureLines + frameIntegrationDiff_) overflowing a
