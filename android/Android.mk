@@ -14,8 +14,8 @@ LIBCAMERA_MESON_VERSION := .0.0.1
 
 include $(CLEAR_VARS)
 
-LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl libyaml
-MESON_GEN_PKGCONFIGS := libexif libjpeg yaml-0.1 libyuv dl
+LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl libyaml libcrypto
+MESON_GEN_PKGCONFIGS := libexif libjpeg yaml-0.1 libyuv dl libcrypto
 
 ifeq ($(TARGET_IS_64_BIT),true)
 LOCAL_MULTILIB := 64
@@ -59,16 +59,15 @@ $(eval $(call libcamera-lib,libcamera,,LIBCAMERA_BIN,LIBCAMERA_MESON_VERSION))
 $(eval $(call libcamera-lib,libcamera-base,,LIBCAMERA_BASE_BIN,LIBCAMERA_MESON_VERSION))
 # Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_rkisp1.so'
 $(eval $(call libcamera-lib,ipa_rkisp1,,LIBCAMERA_IPA_RKISP1_BIN,))
-# Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_rpi.so'
+# Modules 'ipa_rpi', produces '/vendor/lib{64}/ipa_rpi.so'
 $(eval $(call libcamera-lib,ipa_rpi,,LIBCAMERA_IPA_RASPBERRYPI_BIN,))
-# Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_ipu3.so'
+# Modules 'ipa_ipu3', produces '/vendor/lib{64}/ipa_ipu3.so'
 $(eval $(call libcamera-lib,ipa_ipu3,,LIBCAMERA_IPA_IPU3_BIN,))
-# Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_vimc.so'
+# Modules 'ipa_vimc', produces '/vendor/lib{64}/ipa_vimc.so'
 $(eval $(call libcamera-lib,ipa_vimc,,LIBCAMERA_IPA_VIMC_BIN,))
 
 LOCAL_SHARED_LIBRARIES += libcamera libcamera-base ipa_rkisp1 ipa_rpi ipa_ipu3 ipa_vimc
 LOCAL_REQUIRED_MODULES := libcamera libcamera-base ipa_rkisp1 ipa_rpi ipa_ipu3 ipa_vimc
-# ipa_raspberrypi tends to corrupt the build-- only enable once done
 
 # Modules 'camera.libcamera', produces '/vendor/lib{64}/hw/camera.libcamera.so' HAL
 $(eval $(call libcamera-lib,camera.libcamera,hw,LIBCAMERA_HAL_BIN,))
@@ -78,9 +77,13 @@ $(shell mkdir -p $(TARGET_OUT_VENDOR_ETC)/rpi/)
 $(shell mkdir -p $(TARGET_OUT_VENDOR_ETC)/ipu3/)
 $(shell mkdir -p $(TARGET_OUT_VENDOR_ETC)/vimc/)
 $(shell cp $(LIBCAMERA_IPA_RKISP1_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/rkisp1/)
-$(shell cp $(LIBCAMERA_IPA_RASPBERRYPI_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/raspberrypi/)
+$(shell cp $(LIBCAMERA_IPA_RASPBERRYPI_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/rpi/)
 $(shell cp $(LIBCAMERA_IPA_IPU3_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/ipu3/)
 $(shell cp $(LIBCAMERA_IPA_VIMC_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/vimc/)
+$(shell cp $(LIBCAMERA_IPA_RKISP1_SIG) $(TARGET_OUT_VENDOR)/lib/)
+$(shell cp $(LIBCAMERA_IPA_RASPBERRYPI_SIG) $(TARGET_OUT_VENDOR)/lib/)
+$(shell cp $(LIBCAMERA_IPA_IPU3_SIG) $(TARGET_OUT_VENDOR)/lib/)
+$(shell cp $(LIBCAMERA_IPA_VIMC_SIG) $(TARGET_OUT_VENDOR)/lib/)
 
 #-------------------------------------------------------------------------------
 

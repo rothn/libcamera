@@ -292,7 +292,7 @@ IPAModule *IPAManager::module(PipelineHandler *pipe, uint32_t minVersion,
 bool IPAManager::isSignatureValid([[maybe_unused]] IPAModule *ipa) const
 {
 #if ALLOW_UNSIGNED_IPAS_IN_PROCESS
-	return true;
+//	return true;
 #endif
 #if HAVE_IPA_PUBKEY
 	char *force = utils::secure_getenv("LIBCAMERA_IPA_FORCE_ISOLATION");

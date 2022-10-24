@@ -7,6 +7,7 @@
 
 #include "libcamera/internal/pub_key.h"
 
+#include <libcamera/base/log.h>
 #if HAVE_CRYPTO
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -22,6 +23,8 @@
  */
 
 namespace libcamera {
+
+LOG_DEFINE_CATEGORY(PubKey)
 
 /**
  * \class PubKey
@@ -39,6 +42,7 @@ PubKey::PubKey([[maybe_unused]] Span<const uint8_t> key)
 	: valid_(false)
 {
 #if HAVE_CRYPTO
+	LOG(PubKey, Debug) << "signature verification: HAVE_CRYPTO is set.";
 	const uint8_t *data = key.data();
 	pubkey_ = d2i_PUBKEY(nullptr, &data, key.size());
 	if (!pubkey_)
@@ -46,6 +50,7 @@ PubKey::PubKey([[maybe_unused]] Span<const uint8_t> key)
 
 	valid_ = true;
 #elif HAVE_GNUTLS
+	LOG(PubKey, Debug) << "signature verification: HAVE_GNUTLS is set.";
 	int ret = gnutls_pubkey_init(&pubkey_);
 	if (ret < 0)
 		return;
@@ -99,13 +104,16 @@ bool PubKey::verify([[maybe_unused]] Span<const uint8_t> data,
 	 * verification.
 	 */
 	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pubkey_, nullptr);
-	if (!ctx)
+	if (!ctx) {
+		LOG(PubKey, Error) << "Failed to create public key context for signature verification.";
 		return false;
+	}
 
 	if (EVP_PKEY_verify_init(ctx) <= 0 ||
 	    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0 ||
 	    EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
+		LOG(PubKey, Error) << "Failed to initialize public key context for signature verification.";
 		return false;
 	}
 
@@ -117,6 +125,12 @@ bool PubKey::verify([[maybe_unused]] Span<const uint8_t> data,
 	int ret = EVP_PKEY_verify(ctx, sig.data(), sig.size(), digest,
 				  SHA256_DIGEST_LENGTH);
 	EVP_PKEY_CTX_free(ctx);
+
+	if (ret != 1) {
+		LOG(PubKey, Error) << "Signature does not match.";
+		return false;
+	}
+
 	return ret == 1;
 #elif HAVE_GNUTLS
 	const gnutls_datum_t gnuTlsData{
