@@ -340,15 +340,19 @@ int RkISP1CameraData::loadIPA(unsigned int hwRevision)
 		/*
 		 * If the tuning file isn't found, fall back to the
 		 * 'uncalibrated' configuration file.
-		 */
+	 */
 		if (ipaTuningFile.empty())
 			ipaTuningFile = ipa_->configurationFile("uncalibrated.yaml");
 	} else {
 		ipaTuningFile = std::string(configFromEnv);
 	}
 
-	int ret = ipa_->init({ ipaTuningFile, sensor_->model() }, hwRevision,
-			     &controlInfo_);
+	IPACameraSensorInfo sensorInfo{};
+	int ret = sensor_->sensorInfo(&sensorInfo);
+	if (ret)
+		return ret;
+	ret = ipa_->init({ ipaTuningFile, sensor_->model() }, hwRevision,
+			 sensorInfo, sensor_->controls(), &controlInfo_);
 	if (ret < 0) {
 		LOG(RkISP1, Error) << "IPA initialization failure";
 		return ret;
@@ -726,7 +730,7 @@ int PipelineHandlerRkISP1::configure(Camera *camera, CameraConfiguration *c)
 	std::map<uint32_t, ControlInfoMap> entityControls;
 	entityControls.emplace(0, data->sensor_->controls());
 
-	ret = data->ipa_->configure(sensorInfo, streamConfig, entityControls);
+	ret = data->ipa_->configure(sensorInfo, streamConfig, entityControls, &data->controlInfo_);
 	if (ret) {
 		LOG(RkISP1, Error) << "failed configuring IPA (" << ret << ")";
 		return ret;
