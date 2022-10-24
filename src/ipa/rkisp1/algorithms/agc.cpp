@@ -76,7 +76,8 @@ int Agc::configure(IPAContext &context, const IPACameraSensorInfo &configInfo)
 	/* Configure the default exposure and gain. */
 	context.activeState.agc.gain = std::max(context.configuration.sensor.minAnalogueGain,
 						kMinAnalogueGain);
-	context.activeState.agc.exposure = 10ms / context.configuration.sensor.lineDuration;
+	context.activeState.agc.exposure = 10ms / 
+					std::chrono::duration(context.configuration.sensor.lineDuration);
 
 	/*
 	 * According to the RkISP1 documentation:
@@ -254,16 +255,19 @@ void Agc::computeExposure(IPAContext &context, IPAFrameContext &frameContext,
 	 * Push the shutter time up to the maximum first, and only then
 	 * increase the gain.
 	 */
-	utils::Duration shutterTime = std::clamp<utils::Duration>(exposureValue / minAnalogueGain,
+	utils::Duration shutterTime = std::clamp<utils::Duration>(std::chrono::duration(exposureValue) /
+									minAnalogueGain,
 								  minShutterSpeed, maxShutterSpeed);
-	double stepGain = std::clamp(exposureValue / shutterTime,
+	double stepGain = std::clamp(std::chrono::duration(exposureValue) /
+						std::chrono::duration(shutterTime),
 				     minAnalogueGain, maxAnalogueGain);
 	LOG(RkISP1Agc, Debug) << "Divided up shutter and gain are "
 			      << shutterTime << " and "
 			      << stepGain;
 
 	/* Update the estimated exposure and gain. */
-	activeState.agc.exposure = shutterTime / configuration.sensor.lineDuration;
+	activeState.agc.exposure = std::chrono::duration(shutterTime) /
+				std::chrono::duration(configuration.sensor.lineDuration);
 	activeState.agc.gain = stepGain;
 }
 

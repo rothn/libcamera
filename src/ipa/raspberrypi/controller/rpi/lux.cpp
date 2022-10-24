@@ -94,7 +94,8 @@ void Lux::process(StatisticsPtr &stats, Metadata *imageMetadata)
 		double currentY = sum / (double)num + .5;
 		double gainRatio = referenceGain_ / currentGain;
 		double shutterSpeedRatio =
-			referenceShutterSpeed_ / deviceStatus.shutterSpeed;
+			std::chrono::duration(referenceShutterSpeed_) /
+			std::chrono::duration(deviceStatus.shutterSpeed);
 		double apertureRatio = referenceAperture_ / currentAperture;
 		double yRatio = currentY * (65536 / numBins) / referenceY_;
 		double estimatedLux = shutterSpeedRatio * gainRatio *

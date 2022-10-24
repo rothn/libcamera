@@ -101,7 +101,8 @@ int Agc::configure(IPAContext &context,
 
 	/* Configure the default exposure and gain. */
 	activeState.agc.gain = std::max(minAnalogueGain_, kMinAnalogueGain);
-	activeState.agc.exposure = 10ms / configuration.sensor.lineDuration;
+	activeState.agc.exposure = 10ms /
+				std::chrono::duration(configuration.sensor.lineDuration);
 
 	frameCount_ = 0;
 	return 0;
@@ -241,17 +242,20 @@ void Agc::computeExposure(IPAContext &context, IPAFrameContext &frameContext,
 	 * increase the gain.
 	 */
 	utils::Duration shutterTime =
-		std::clamp<utils::Duration>(exposureValue / minAnalogueGain_,
-					    minShutterSpeed_, maxShutterSpeed_);
-	double stepGain = std::clamp(exposureValue / shutterTime,
-				     minAnalogueGain_, maxAnalogueGain_);
+		std::clamp<utils::Duration>(std::chrono::duration(exposureValue) /
+						minAnalogueGain_,
+					minShutterSpeed_, maxShutterSpeed_);
+	double stepGain = std::clamp(std::chrono::duration(exposureValue) /
+					std::chrono::duration(shutterTime),
+				minAnalogueGain_, maxAnalogueGain_);
 	LOG(IPU3Agc, Debug) << "Divided up shutter and gain are "
 			    << shutterTime << " and "
 			    << stepGain;
 
 	IPAActiveState &activeState = context.activeState;
 	/* Update the estimated exposure and gain. */
-	activeState.agc.exposure = shutterTime / configuration.sensor.lineDuration;
+	activeState.agc.exposure = std::chrono::duration(shutterTime) /
+				std::chrono::duration(configuration.sensor.lineDuration);
 	activeState.agc.gain = stepGain;
 }
 

@@ -418,7 +418,8 @@ void Agc::prepare(Metadata *imageMetadata)
 			Duration actualExposure = deviceStatus.shutterSpeed *
 						  deviceStatus.analogueGain;
 			if (actualExposure) {
-				status_.digitalGain = status_.totalExposureValue / actualExposure;
+				status_.digitalGain = std::chrono::duration(status_.totalExposureValue) /
+							std::chrono::duration(actualExposure);
 				LOG(RPiAgc, Debug) << "Want total exposure " << status_.totalExposureValue;
 				/*
 				 * Never ask for a gain < 1.0, and also impose
@@ -823,7 +824,8 @@ void Agc::divideUpExposure()
 			}
 			if (status_.fixedAnalogueGain == 0.0) {
 				if (exposureMode_->gain[stage] * shutterTime >= exposureValue) {
-					analogueGain = exposureValue / shutterTime;
+					analogueGain = std::chrono::duration(exposureValue) /
+							std::chrono::duration(shutterTime);
 					break;
 				}
 				analogueGain = exposureMode_->gain[stage];
@@ -838,10 +840,12 @@ void Agc::divideUpExposure()
 	 */
 	if (!status_.fixedShutter && !status_.fixedAnalogueGain &&
 	    status_.flickerPeriod) {
-		int flickerPeriods = shutterTime / status_.flickerPeriod;
+		int flickerPeriods = std::chrono::duration(shutterTime) /
+				std::chrono::duration(status_.flickerPeriod);
 		if (flickerPeriods) {
 			Duration newShutterTime = flickerPeriods * status_.flickerPeriod;
-			analogueGain *= shutterTime / newShutterTime;
+			analogueGain *= std::chrono::duration(shutterTime) /
+					std::chrono::duration(newShutterTime);
 			/*
 			 * We should still not allow the ag to go over the
 			 * largest value in the exposure mode. Note that this
