@@ -76,6 +76,10 @@ if cc.has_header_symbol('stdlib.h', 'secure_getenv', prefix : '#define _GNU_SOUR
     config_h.set('HAVE_SECURE_GETENV', 1)
 endif
 
+if get_option('allow_unsigned_ipas_in_process')
+    config_h.set('ALLOW_UNSIGNED_IPAS_IN_PROCESS', 1)
+endif
+
 common_arguments = [
     '-Wshadow',
     '-include', meson.current_build_dir() / 'config.h',

@@ -64,3 +64,8 @@ option('pycamera',
         type : 'feature',
         value : 'disabled',
         description : 'Enable libcamera Python bindings (experimental)')
+
+option('allow_unsigned_ipas_in_process',
+        type : 'boolean',
+        value : false,
+        description : 'Allow unsigned IPAs to run in libcamera\'s address space')
