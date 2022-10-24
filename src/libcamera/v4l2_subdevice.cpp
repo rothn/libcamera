@@ -392,7 +392,8 @@ int V4L2Subdevice::getSelection(unsigned int pad, unsigned int target,
 	if (ret < 0) {
 		LOG(V4L2, Error)
 			<< "Unable to get rectangle " << target << " on pad "
-			<< pad << ": " << strerror(-ret);
+			<< pad << ": " << strerror(-ret) << "."
+			<< "device path: " << devicePath() << " device node: " << deviceNode();
 		return ret;
 	}
 

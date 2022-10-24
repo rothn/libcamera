@@ -418,7 +418,10 @@ void Agc::prepare(Metadata *imageMetadata)
 			Duration actualExposure = deviceStatus.shutterSpeed *
 						  deviceStatus.analogueGain;
 			if (actualExposure) {
-				status_.digitalGain = status_.totalExposureValue / actualExposure;
+				/* TODO(Bug 156): Workaround for LLVM bug. */
+				double totalExposureDouble = status_.totalExposureValue.get<std::nano>();
+				double actualExposureDouble = actualExposure.get<std::nano>();
+				status_.digitalGain = totalExposureDouble / actualExposureDouble;
 				LOG(RPiAgc, Debug) << "Want total exposure " << status_.totalExposureValue;
 				/*
 				 * Never ask for a gain < 1.0, and also impose
@@ -823,7 +826,10 @@ void Agc::divideUpExposure()
 			}
 			if (status_.fixedAnalogueGain == 0.0) {
 				if (exposureMode_->gain[stage] * shutterTime >= exposureValue) {
-					analogueGain = exposureValue / shutterTime;
+					/* TODO(Bug 156): Workaround for LLVM bug. */
+					double exposureDouble = exposureValue.get<std::nano>();
+					double shutterTimeDouble = shutterTime.get<std::nano>();
+					analogueGain = exposureDouble / shutterTimeDouble;
 					break;
 				}
 				analogueGain = exposureMode_->gain[stage];
@@ -838,10 +844,14 @@ void Agc::divideUpExposure()
 	 */
 	if (!status_.fixedShutter && !status_.fixedAnalogueGain &&
 	    status_.flickerPeriod) {
-		int flickerPeriods = shutterTime / status_.flickerPeriod;
+		/* TODO(Bug 156): Workaround for LLVM bug. */
+		double shutterTimeDouble = shutterTime.get<std::nano>();
+		double flickerPeriod = status_.flickerPeriod.get<std::nano>();
+		int flickerPeriods = shutterTimeDouble / flickerPeriod;
 		if (flickerPeriods) {
 			Duration newShutterTime = flickerPeriods * status_.flickerPeriod;
-			analogueGain *= shutterTime / newShutterTime;
+			double newShutterTimeDouble = newShutterTime.get<std::nano>();
+			analogueGain *= shutterTimeDouble / newShutterTimeDouble;
 			/*
 			 * We should still not allow the ag to go over the
 			 * largest value in the exposure mode. Note that this

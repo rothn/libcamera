@@ -74,7 +74,13 @@ int Agc::configure(IPAContext &context, const IPACameraSensorInfo &configInfo)
 {
 	/* Configure the default exposure and gain. */
 	context.activeState.agc.gain = std::max(context.configuration.agc.minAnalogueGain, kMinAnalogueGain);
-	context.activeState.agc.exposure = 10ms / context.configuration.sensor.lineDuration;
+	/* TODO(Bug 156): Explicit division of ticks (e.g., `x.get<std::nano>() /
+	 * y.get<std::nano>()` as opposed to `x / y`) is a workaround for
+	 * LLVM bug 41130 and should be reverted once we no longer target
+	 * Android 11 / sdk30 since it compromises unit safety and readability. */
+	constexpr libcamera::utils::Duration ten_millis(10ms);
+	long double exposure = ten_millis.get<std::nano>() / context.configuration.sensor.lineDuration.get<std::nano>();
+	context.activeState.agc.exposure = uint32_t(exposure);
 
 	/*
 	 * According to the RkISP1 documentation:
@@ -211,17 +217,25 @@ void Agc::computeExposure(IPAContext &context, IPAFrameContext &frameContext,
 	/*
 	 * Push the shutter time up to the maximum first, and only then
 	 * increase the gain.
+	 *
+	 * TODO(Bug 156): Explicit division of ticks (e.g., `x.get<std::nano>() /
+	 * y.get<std::nano>()` as opposed to `x / y`) is a workaround for
+	 * LLVM bug 41130 and should be reverted once we no longer target
+	 * Android 11 / sdk30 since it compromises unit safety and readability.
 	 */
-	utils::Duration shutterTime = std::clamp<utils::Duration>(exposureValue / minAnalogueGain,
+	utils::Duration shutterTimeUnclamped(exposureValue.get<std::nano>() / minAnalogueGain);
+	utils::Duration shutterTime = std::clamp<utils::Duration>(shutterTimeUnclamped,
 								  minShutterSpeed, maxShutterSpeed);
-	double stepGain = std::clamp(exposureValue / shutterTime,
+	double stepGainUnclamped = exposureValue.get<std::nano>() / shutterTime.get<std::nano>();
+	double stepGain = std::clamp(stepGainUnclamped,
 				     minAnalogueGain, maxAnalogueGain);
 	LOG(RkISP1Agc, Debug) << "Divided up shutter and gain are "
 			      << shutterTime << " and "
 			      << stepGain;
 
 	/* Update the estimated exposure and gain. */
-	activeState.agc.exposure = shutterTime / configuration.sensor.lineDuration;
+	activeState.agc.exposure = uint32_t(shutterTime.get<std::nano>() /
+		configuration.sensor.lineDuration.get<std::nano>());
 	activeState.agc.gain = stepGain;
 }
 

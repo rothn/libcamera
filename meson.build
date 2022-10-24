@@ -74,6 +74,10 @@ if cc.has_header_symbol('stdlib.h', 'secure_getenv', prefix : '#define _GNU_SOUR
     config_h.set('HAVE_SECURE_GETENV', 1)
 endif
 
+if get_option('allow_unsigned_ipas_in_process')
+    config_h.set('ALLOW_UNSIGNED_IPAS_IN_PROCESS', 1)
+endif
+
 common_arguments = [
     '-Wshadow',
     '-include', meson.current_build_dir() / 'config.h',
@@ -92,14 +96,6 @@ if cc.get_id() == 'clang'
     if get_option('optimization') != '0'
         common_arguments += [
             '-D_FORTIFY_SOURCE=2',
-        ]
-    endif
-
-    # Use libc++ by default if available instead of libstdc++ when compiling
-    # with clang.
-    if cc.find_library('libc++', required: false).found()
-        cpp_arguments += [
-            '-stdlib=libc++',
         ]
     endif
 

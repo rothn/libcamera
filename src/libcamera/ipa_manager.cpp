@@ -114,10 +114,20 @@ IPAManager::IPAManager()
 		LOG(IPAManager, Warning) << "Public key not valid";
 #endif
 
+#if ALLOW_UNSIGNED_IPAS_IN_PROCESS
+	LOG(IPAManager, Warning)
+		<< "All IPAs running in-process without signature verification."
+		<< " This is recommended only for tightly-managed installs"
+		<< " in contexts where both signature verification and out-of-process"
+		<< " execution are infeasible, such as Android HALs.";
+#endif
+
 	unsigned int ipaCount = 0;
 
 	/* User-specified paths take precedence. */
 	const char *modulePaths = utils::secure_getenv("LIBCAMERA_IPA_MODULE_PATH");
+	LOG(IPAManager, Warning)
+			<< "LIBCAMERA_IPA_MODULE_PATH: " << modulePaths;
 	if (modulePaths) {
 		for (const auto &dir : utils::split(modulePaths, ":")) {
 			if (dir.empty())
@@ -281,6 +291,9 @@ IPAModule *IPAManager::module(PipelineHandler *pipe, uint32_t minVersion,
 
 bool IPAManager::isSignatureValid([[maybe_unused]] IPAModule *ipa) const
 {
+#if ALLOW_UNSIGNED_IPAS_IN_PROCESS
+	return true;
+#endif
 #if HAVE_IPA_PUBKEY
 	char *force = utils::secure_getenv("LIBCAMERA_IPA_FORCE_ISOLATION");
 	if (force && force[0] != '\0') {

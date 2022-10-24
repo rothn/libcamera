@@ -101,6 +101,13 @@ const ControlInfoMap::Map rkisp1Controls{
 	{ &controls::Saturation, ControlInfo(0.0f, 1.993f) },
 	{ &controls::Sharpness, ControlInfo(0.0f, 10.0f, 1.0f) },
 	{ &controls::draft::NoiseReductionMode, ControlInfo(controls::draft::NoiseReductionModeValues) },
+	/* libcamera requires a fixed value for minimum frame duration,
+	 * but this depends on the frame size and the rkisp1 device datasheets
+	 * measure this in pixels per second. Neither the datasheets nor the driver
+	 * specify a maximum. The minimum below is for 1920x1920. The maximum
+	 * corresponds to two seconds. */
+	{ &controls::FrameDurationLimits, ControlInfo(48505, 2000000) },
+	{ &controls::draft::MaxLatency, ControlInfo(0) },
 };
 
 } /* namespace */
