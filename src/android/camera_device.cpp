@@ -781,14 +781,18 @@ CameraDevice::createFrameBuffer(const buffer_handle_t camera3buffer,
 		return nullptr;
 	}
 
+	if (camera3buffer->numFds > 1) {
+		LOG(HAL, Fatal) << "Discontiguous planes are not supported";
+	}
+
+	SharedFD fd{ camera3buffer->data[0] };
+	if (!fd.isValid()) {
+		LOG(HAL, Fatal) << "No valid fd";
+		return nullptr;
+	}
+
 	std::vector<FrameBuffer::Plane> planes(buf.numPlanes());
 	for (size_t i = 0; i < buf.numPlanes(); ++i) {
-		SharedFD fd{ camera3buffer->data[i] };
-		if (!fd.isValid()) {
-			LOG(HAL, Fatal) << "No valid fd";
-			return nullptr;
-		}
-
 		planes[i].fd = fd;
 		planes[i].offset = buf.offset(i);
 		planes[i].length = buf.size(i);
