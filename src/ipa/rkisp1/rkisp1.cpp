@@ -258,6 +258,7 @@ int IPARkISP1::configure([[maybe_unused]] const IPACameraSensorInfo &info,
 	context_.configuration.sensor.lineDuration = info.minLineLength * 1.0s / info.pixelRate;
 
 	/* Update the camera controls using the new sensor settings. */
+	LOG(IPARkISP1, Debug) << "Calling updateControls";
 	updateControls(info, ctrls_, ipaControls);
 
 	/*
@@ -274,11 +275,13 @@ int IPARkISP1::configure([[maybe_unused]] const IPACameraSensorInfo &info,
 	context_.configuration.sensor.minAnalogueGain = camHelper_->gain(minGain);
 	context_.configuration.sensor.maxAnalogueGain = camHelper_->gain(maxGain);
 
+	LOG(IPARkISP1, Debug) << "enumerating and configuring algorithms";
 	for (auto const &algo : algorithms()) {
 		int ret = algo->configure(context_, info);
 		if (ret)
 			return ret;
 	}
+	LOG(IPARkISP1, Debug) << "IPARkISP1::configure() exiting successfully";
 
 	return 0;
 }

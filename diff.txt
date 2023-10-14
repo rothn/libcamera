@@ -1,0 +1,813 @@
+diff --git a/android/Android.mk b/android/Android.mk
+new file mode 100644
+index 00000000..70bf6212
+--- /dev/null
++++ b/android/Android.mk
+@@ -0,0 +1,85 @@
++# SPDX-License-Identifier: Apache-2.0
++#
++# Copyright (C) 2021, GlobalLogic Ukraine
++# Copyright (C) 2021, Roman Stratiienko (r.stratiienko@gmail.com)
++#
++# Android.mk - Android makefile
++#
++
++ifneq ($(filter true, $(BOARD_LIBCAMERA_USES_MESON_BUILD)),)
++
++LOCAL_PATH := $(call my-dir)
++LIBCAMERA_TOP := $(dir $(LOCAL_PATH))
++LIBCAMERA_MESON_VERSION := .0.0.1
++
++include $(CLEAR_VARS)
++
++LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl libyaml
++MESON_GEN_PKGCONFIGS := libexif libjpeg yaml-0.1 libyuv dl
++
++ifeq ($(TARGET_IS_64_BIT),true)
++LOCAL_MULTILIB := 64
++else
++LOCAL_MULTILIB := 32
++endif
++include $(LOCAL_PATH)/meson_cross.mk
++
++ifdef TARGET_2ND_ARCH
++LOCAL_MULTILIB := 32
++include $(LOCAL_PATH)/meson_cross.mk
++endif
++
++#-------------------------------------------------------------------------------
++
++define libcamera-lib
++LOCAL_MODULE_CLASS := SHARED_LIBRARIES
++LOCAL_MODULE := $1
++LOCAL_VENDOR_MODULE := true
++LOCAL_MODULE_RELATIVE_PATH := $2
++ifdef TARGET_2ND_ARCH
++LOCAL_SRC_FILES_$(TARGET_ARCH) := $(call relative_top_path,$(LOCAL_PATH))$($3)
++LOCAL_SRC_FILES_$(TARGET_2ND_ARCH) := $(call relative_top_path,$(LOCAL_PATH))$(2ND_$3)
++LOCAL_MULTILIB := both
++else
++LOCAL_SRC_FILES := $(call relative_top_path,$(LOCAL_PATH))$($3)
++endif
++LOCAL_CHECK_ELF_FILES := false
++LOCAL_MODULE_SUFFIX := .so$(${4})
++include $(BUILD_PREBUILT)
++include $(CLEAR_VARS)
++endef
++
++__MY_SHARED_LIBRARIES := $(LOCAL_SHARED_LIBRARIES)
++include $(CLEAR_VARS)
++LOCAL_SHARED_LIBRARIES := $(__MY_SHARED_LIBRARIES)
++
++# Modules 'libcamera', produces '/vendor/lib{64}/libcamera.so'
++$(eval $(call libcamera-lib,libcamera,,LIBCAMERA_BIN,LIBCAMERA_MESON_VERSION))
++# Modules 'libcamera-base', produces '/vendor/lib{64}/libcamera-base.so'
++$(eval $(call libcamera-lib,libcamera-base,,LIBCAMERA_BASE_BIN,LIBCAMERA_MESON_VERSION))
++# Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_rkisp1.so'
++$(eval $(call libcamera-lib,ipa_rkisp1,,LIBCAMERA_IPA_RKISP1_BIN,))
++# Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_raspberrypi.so'
++$(eval $(call libcamera-lib,ipa_raspberrypi,,LIBCAMERA_IPA_RASPBERRYPI_BIN,))
++# Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_ipu3.so'
++$(eval $(call libcamera-lib,ipa_ipu3,,LIBCAMERA_IPA_IPU3_BIN,))
++# Modules 'ipa_rkisp1', produces '/vendor/lib{64}/ipa_vimc.so'
++$(eval $(call libcamera-lib,ipa_vimc,,LIBCAMERA_IPA_VIMC_BIN,))
++
++# Modules 'camera.libcamera', produces '/vendor/lib{64}/hw/camera.libcamera.so' HAL
++$(eval $(call libcamera-lib,camera.libcamera,hw,LIBCAMERA_HAL_BIN,))
++
++LOCAL_REQUIRED_MODULES := libcamera libcamera-base ipa_rkisp1 ipa_raspberrypi ipa_ipu3 ipa_vimc
++
++$(shell mkdir -p $(TARGET_OUT_VENDOR_ETC)/rkisp1/)
++$(shell mkdir -p $(TARGET_OUT_VENDOR_ETC)/raspberrypi/)
++$(shell mkdir -p $(TARGET_OUT_VENDOR_ETC)/ipu3/)
++$(shell mkdir -p $(TARGET_OUT_VENDOR_ETC)/vimc/)
++$(shell cp $(LIBCAMERA_IPA_RKISP1_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/rkisp1/)
++$(shell cp $(LIBCAMERA_IPA_RASPBERRYPI_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/raspberrypi/)
++$(shell cp $(LIBCAMERA_IPA_IPU3_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/ipu3/)
++$(shell cp $(LIBCAMERA_IPA_VIMC_CONFIGS)/* $(TARGET_OUT_VENDOR_ETC)/vimc/)
++
++#-------------------------------------------------------------------------------
++
++endif
+diff --git a/android/meson_cross.mk b/android/meson_cross.mk
+new file mode 100644
+index 00000000..f42e5ae9
+--- /dev/null
++++ b/android/meson_cross.mk
+@@ -0,0 +1,296 @@
++# SPDX-License-Identifier: Apache-2.0
++#
++# Copyright (C) 2021, GlobalLogic Ukraine
++# Copyright (C) 2021, Roman Stratiienko (r.stratiienko@gmail.com)
++#
++# meson_cross.mk - Android makefile
++#
++
++# Turn "dir1/dir2/dir3/dir4" into "../../../../"
++define relative_top_path
++$(eval __s:=) \
++$(foreach tmp,$(subst /,$(space),$1),$(eval __s:=$(__s)../)) \
++$(__s)
++endef
++
++MY_PATH := $(call my-dir)
++
++AOSP_ABSOLUTE_PATH := $(realpath .)
++
++libcam_m_dummy_$(LOCAL_MULTILIB) := $(TARGET_OUT_INTERMEDIATES)/LIBCAM_DUMMY_$(LOCAL_MULTILIB)/dummy.c
++
++$(libcam_m_dummy_$(LOCAL_MULTILIB)):
++	mkdir -p $(dir $@)
++	touch $@
++
++LOCAL_SRC_FILES := $(call relative_top_path,$(MY_PATH))$(libcam_m_dummy_$(LOCAL_MULTILIB))
++LOCAL_VENDOR_MODULE := true
++LOCAL_MODULE := libcam.dummy.$(LOCAL_MULTILIB)
++
++# Prepare intermediate variables by AOSP make/core internals
++include $(BUILD_SHARED_LIBRARY)
++
++LOCAL_PATH := $(MY_PATH)
++
++link_deps := \
++	$(built_static_libraries) \
++	$(built_shared_libraries) \
++	$(built_whole_libraries) \
++	$(strip $(all_objects)) \
++	$(my_target_libatomic) \
++	$(my_target_libcrt_builtins) \
++	$(my_target_crtbegin_so_o) \
++	$(my_target_crtend_so_o)
++
++# Build using intermediate variables provided by AOSP make/core internals
++M_TARGET_PREFIX := $(my_2nd_arch_prefix)
++
++LIBCAMERA_LIB_DIR := lib$(subst 32,,$(LOCAL_MULTILIB))
++
++MESON_OUT_DIR                            := $($(M_TARGET_PREFIX)TARGET_OUT_INTERMEDIATES)/MESON_LIBCAMERA
++MESON_GEN_DIR                            := $(MESON_OUT_DIR)_GEN
++MESON_GEN_FILES_TARGET                   := $(MESON_GEN_DIR)/.timestamp
++
++$(M_TARGET_PREFIX)LIBCAMERA_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera.so
++$(M_TARGET_PREFIX)LIBCAMERA_HAL_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera-hal.so
++$(M_TARGET_PREFIX)LIBCAMERA_BASE_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera-base.so
++$(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_rkisp1.so
++$(M_TARGET_PREFIX)LIBCAMERA_IPA_RASPBERRYPI_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_raspberrypi.so
++$(M_TARGET_PREFIX)LIBCAMERA_IPA_IPU3_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_ipu3.so
++$(M_TARGET_PREFIX)LIBCAMERA_IPA_VIMC_BIN := $(MESON_OUT_DIR)/install/usr/local/lib/libcamera/ipa_vimc.so
++$(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/rkisp1
++$(M_TARGET_PREFIX)LIBCAMERA_IPA_RASPBERRYPI_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/raspberrypi
++$(M_TARGET_PREFIX)LIBCAMERA_IPA_IPU3_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/ipu3
++$(M_TARGET_PREFIX)LIBCAMERA_IPA_VIMC_CONFIGS := $(MESON_OUT_DIR)/install/usr/local/share/libcamera/ipa/vimc
++
++LIBCAMERA_BINS := \
++	$($(M_TARGET_PREFIX)LIBCAMERA_BIN) \
++	$($(M_TARGET_PREFIX)LIBCAMERA_HAL_BIN) \
++	$($(M_TARGET_PREFIX)LIBCAMERA_BASE_BIN) \
++	$($(M_TARGET_PREFIX)LIBCAMERA_IPA_RKISP1_BIN) \
++	$($(M_TARGET_PREFIX)LIBCAMERA_IPA_RASPBERRYPI_BIN) \
++	$($(M_TARGET_PREFIX)LIBCAMERA_IPA_IPU3_BIN) \
++	$($(M_TARGET_PREFIX)LIBCAMERA_IPA_VIMC_BIN)
++
++MESON_GEN_NINJA := \
++	cd $(MESON_OUT_DIR) && PATH=/usr/bin:/usr/local/bin:$$PATH meson ./build \
++	--cross-file $(AOSP_ABSOLUTE_PATH)/$(MESON_GEN_DIR)/aosp_cross           \
++	--buildtype=release                                                      \
++	-Dandroid=enabled                                                        \
++	-Dipas=$(subst $(space),$(comma),$(BOARD_LIBCAMERA_IPAS))                \
++	-Dpipelines=$(subst $(space),$(comma),$(BOARD_LIBCAMERA_PIPELINES))      \
++	-Dsysconfdir=/vendor/etc                                                 \
++	-Dtest=false                                                             \
++	-Dallow_unsigned_ipas_in_process=true
++
++MESON_BUILD := PATH=/usr/bin:/bin:/sbin:$$PATH ninja -C $(MESON_OUT_DIR)/build
++
++$(MESON_GEN_FILES_TARGET): MESON_CPU_FAMILY := $(subst arm64,aarch64,$(TARGET_$(M_TARGET_PREFIX)ARCH))
++
++define create-pkgconfig
++echo -e "Name: $2" \
++	"\nDescription: $2" \
++	"\nVersion: $3" > $1/$2.pc
++
++endef
++
++# Taken from build/make/core/binary.mk. We need this
++# to use definitions from build/make/core/definitions.mk
++$(MESON_GEN_FILES_TARGET): PRIVATE_GLOBAL_C_INCLUDES := $(my_target_global_c_includes)
++$(MESON_GEN_FILES_TARGET): PRIVATE_GLOBAL_C_SYSTEM_INCLUDES := $(my_target_global_c_system_includes)
++
++$(MESON_GEN_FILES_TARGET): PRIVATE_TARGET_GLOBAL_CFLAGS := $(my_target_global_cflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_TARGET_GLOBAL_CONLYFLAGS := $(my_target_global_conlyflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_TARGET_GLOBAL_CPPFLAGS := $(my_target_global_cppflags)
++
++$(MESON_GEN_FILES_TARGET): PRIVATE_2ND_ARCH_VAR_PREFIX := $(M_TARGET_PREFIX)
++$(MESON_GEN_FILES_TARGET): PRIVATE_CC := $(my_cc)
++$(MESON_GEN_FILES_TARGET): PRIVATE_LINKER := $(my_linker)
++$(MESON_GEN_FILES_TARGET): PRIVATE_CXX := $(my_cxx)
++$(MESON_GEN_FILES_TARGET): PRIVATE_CXX_LINK := $(my_cxx_link)
++$(MESON_GEN_FILES_TARGET): PRIVATE_YACCFLAGS := $(LOCAL_YACCFLAGS)
++$(MESON_GEN_FILES_TARGET): PRIVATE_ASFLAGS := $(my_asflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_CONLYFLAGS := $(my_conlyflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_CFLAGS := $(my_cflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_CPPFLAGS := $(my_cppflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_CFLAGS_NO_OVERRIDE := $(my_cflags_no_override)
++$(MESON_GEN_FILES_TARGET): PRIVATE_CPPFLAGS_NO_OVERRIDE := $(my_cppflags_no_override)
++$(MESON_GEN_FILES_TARGET): PRIVATE_RTTI_FLAG := $(LOCAL_RTTI_FLAG)
++$(MESON_GEN_FILES_TARGET): PRIVATE_DEBUG_CFLAGS := $(debug_cflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_C_INCLUDES := $(my_c_includes)
++$(MESON_GEN_FILES_TARGET): PRIVATE_IMPORTED_INCLUDES := $(imported_includes)
++$(MESON_GEN_FILES_TARGET): PRIVATE_LDFLAGS := $(my_ldflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_LDLIBS := $(my_ldlibs)
++$(MESON_GEN_FILES_TARGET): PRIVATE_TARGET_GLOBAL_LDFLAGS := $(my_target_global_ldflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_TIDY_CHECKS := $(my_tidy_checks)
++$(MESON_GEN_FILES_TARGET): PRIVATE_TIDY_FLAGS := $(my_tidy_flags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_ARFLAGS := $(my_arflags)
++$(MESON_GEN_FILES_TARGET): PRIVATE_ALL_SHARED_LIBRARIES := $(built_shared_libraries)
++$(MESON_GEN_FILES_TARGET): PRIVATE_ALL_STATIC_LIBRARIES := $(built_static_libraries)
++$(MESON_GEN_FILES_TARGET): PRIVATE_ALL_WHOLE_STATIC_LIBRARIES := $(built_whole_libraries)
++$(MESON_GEN_FILES_TARGET): PRIVATE_ALL_OBJECTS := $(strip $(all_objects))
++
++$(MESON_GEN_FILES_TARGET): PRIVATE_ARM_CFLAGS := $(normal_objects_cflags)
++
++$(MESON_GEN_FILES_TARGET): PRIVATE_TARGET_LIBCRT_BUILTINS := $(my_target_libcrt_builtins)
++$(MESON_GEN_FILES_TARGET): PRIVATE_TARGET_LIBATOMIC := $(my_target_libatomic)
++$(MESON_GEN_FILES_TARGET): PRIVATE_TARGET_CRTBEGIN_SO_O := $(my_target_crtbegin_so_o)
++$(MESON_GEN_FILES_TARGET): PRIVATE_TARGET_CRTEND_SO_O := $(my_target_crtend_so_o)
++##
++
++define m-lld-flags
++  -nostdlib -Wl,--gc-sections \
++  $(PRIVATE_TARGET_CRTBEGIN_SO_O) \
++  $(PRIVATE_ALL_OBJECTS) \
++  -Wl,--whole-archive \
++  $(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES) \
++  -Wl,--no-whole-archive \
++  $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--start-group) \
++  $(PRIVATE_ALL_STATIC_LIBRARIES) \
++  $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--end-group) \
++  $(if $(filter true,$(NATIVE_COVERAGE)),$(PRIVATE_TARGET_COVERAGE_LIB)) \
++  $(PRIVATE_TARGET_LIBCRT_BUILTINS) \
++  $(PRIVATE_TARGET_LIBATOMIC) \
++  $(PRIVATE_TARGET_GLOBAL_LDFLAGS) \
++  $(PRIVATE_LDFLAGS) \
++  $(PRIVATE_ALL_SHARED_LIBRARIES) \
++  $(PRIVATE_TARGET_CRTEND_SO_O) \
++  $(PRIVATE_LDLIBS)
++endef
++
++define m-lld-flags-cleaned
++  $(subst prebuilts/,$(AOSP_ABSOLUTE_PATH)/prebuilts/, \
++  $(subst out/,$(AOSP_ABSOLUTE_PATH)/out/,             \
++  $(subst -Wl$(comma)--fatal-warnings,,                \
++  $(subst -Wl$(comma)--no-undefined-version,,          \
++  $(subst -Wl$(comma)--gc-sections,,                   \
++  $(patsubst %dummy.o,,                                \
++    $(m-lld-flags)))))))
++endef
++
++define m-cpp-flags
++  $(PRIVATE_TARGET_GLOBAL_CFLAGS) \
++  $(PRIVATE_TARGET_GLOBAL_CPPFLAGS) \
++  $(PRIVATE_ARM_CFLAGS) \
++  $(PRIVATE_RTTI_FLAG) \
++  $(PRIVATE_CFLAGS) \
++  $(PRIVATE_CPPFLAGS) \
++  $(PRIVATE_DEBUG_CFLAGS) \
++  $(PRIVATE_CFLAGS_NO_OVERRIDE) \
++  $(PRIVATE_CPPFLAGS_NO_OVERRIDE)
++endef
++
++define m-c-flags
++  $(PRIVATE_TARGET_GLOBAL_CFLAGS) \
++  $(PRIVATE_TARGET_GLOBAL_CONLYFLAGS) \
++  $(PRIVATE_ARM_CFLAGS) \
++  $(PRIVATE_CFLAGS) \
++  $(PRIVATE_CONLYFLAGS) \
++  $(PRIVATE_DEBUG_CFLAGS) \
++  $(PRIVATE_CFLAGS_NO_OVERRIDE)
++endef
++
++define filter-c-flags
++  $(subst -std=gnu++17,, \
++  $(subst -fno-rtti,, \
++  $(patsubst  -W%,, \
++    $1)))
++endef
++
++define m-c-includes-common
++$(addprefix -I , $(PRIVATE_C_INCLUDES)) \
++$(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),,\
++    $(addprefix -I ,\
++        $(filter-out $(PRIVATE_C_INCLUDES), \
++            $(PRIVATE_GLOBAL_C_INCLUDES))) \
++    $(addprefix -isystem ,\
++        $(filter-out $(PRIVATE_C_INCLUDES), \
++            $(PRIVATE_GLOBAL_C_SYSTEM_INCLUDES))))
++endef
++
++ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 30; echo $$?), 0)
++# Android 11+
++define m-c-includes
++$(foreach i,$(PRIVATE_IMPORTED_INCLUDES),$(EXPORTS.$(i)))\
++$(m-c-includes-common)
++endef
++define postprocess-includes
++endef
++else
++# Android 10,9
++$(MESON_GEN_FILES_TARGET): PRIVATE_IMPORT_INCLUDES := $(import_includes)
++define postprocess-includes
++	echo " $$(cat $(PRIVATE_IMPORT_INCLUDES)) " > $(MESON_GEN_DIR)/import_includes && \
++	sed -i  -e ':a;N;$$!ba;s/\n/ /g'                                  \
++		-e 's# \{2,\}# #g'                                        \
++		-e 's# -isystem # -isystem#g'                             \
++		-e 's# -I # -I#g'                                         \
++		-e 's# -I# -I$(AOSP_ABSOLUTE_PATH)/#g'                    \
++		-e 's# -isystem# -isystem$(AOSP_ABSOLUTE_PATH)/#g'        \
++		-e "s# #','#g" $(MESON_GEN_DIR)/import_includes &&        \
++	sed -i "s#<_IMPORT_INCLUDES>#$$(cat $(MESON_GEN_DIR)/import_includes)#g" $(MESON_GEN_DIR)/aosp_cross
++endef
++define m-c-includes
++<_IMPORT_INCLUDES> $(m-c-includes-common)
++endef
++endif
++
++define m-c-abs-includes
++  $(subst $(space)-isystem,$(space)-isystem$(AOSP_ABSOLUTE_PATH)/, \
++  $(subst $(space)-I, -I$(AOSP_ABSOLUTE_PATH)/, \
++  $(subst $(space)-I$(space),$(space)-I, \
++  $(subst $(space)-isystem$(space),$(space)-isystem, \
++    $(strip $(m-c-includes))))))
++endef
++
++$(MESON_GEN_FILES_TARGET): MESON_GEN_PKGCONFIGS:=$(MESON_GEN_PKGCONFIGS)
++$(MESON_GEN_FILES_TARGET): MESON_GEN_DIR:=$(MESON_GEN_DIR)
++$(MESON_GEN_FILES_TARGET): $(sort $(shell find -L $(LIBCAMERA_TOP) -not -path '*/\.*'))
++	mkdir -p $(dir $@)
++	echo -e "[properties]\n"                                                                                                  \
++		"c_args = [$(foreach flag, $(call filter-c-flags,$(m-c-flags) $(m-c-abs-includes)),'$(flag)', )'']\n"             \
++		"cpp_args = [$(foreach flag, $(call filter-c-flags,$(m-cpp-flags) $(m-c-abs-includes)),'$(flag)', )'']\n"         \
++		"c_link_args = [$(foreach flag, $(m-lld-flags-cleaned),'$(flag)',)'']\n"                                          \
++		"cpp_link_args = [$(foreach flag, $(m-lld-flags-cleaned),'$(flag)',)'']\n"                                        \
++		"needs_exe_wrapper = true\n"                                                                                      \
++		"[binaries]\n"                                                                                                    \
++		"ar = '$(AOSP_ABSOLUTE_PATH)/$($($(M_TARGET_PREFIX))TARGET_AR)'\n"                                                \
++		"c = [$(foreach arg,$(PRIVATE_CC),'$(subst prebuilts/,$(AOSP_ABSOLUTE_PATH)/prebuilts/,$(arg))',)'']\n"           \
++		"cpp = [$(foreach arg,$(PRIVATE_CXX),'$(subst prebuilts/,$(AOSP_ABSOLUTE_PATH)/prebuilts/,$(arg))',)'']\n"        \
++		"c_ld = 'lld'\n"                                                                                                  \
++		"cpp_ld = 'lld'\n\n"                                                                                              \
++		"pkgconfig = ['env', 'PKG_CONFIG_LIBDIR=' + '$(AOSP_ABSOLUTE_PATH)/$(MESON_GEN_DIR)', '/usr/bin/pkg-config']\n\n" \
++		"llvm-config = '/dev/null'\n"                                                                                     \
++		"[host_machine]\n"                                                                                                \
++		"system = 'linux'\n"                                                                                              \
++		"cpu_family = '$(MESON_CPU_FAMILY)'\n"                                                                            \
++		"cpu = '$(MESON_CPU_FAMILY)'\n"                                                                                   \
++		"endian = 'little'" > $(dir $@)/aosp_cross
++
++	#
++	$(foreach pkg, $(MESON_GEN_PKGCONFIGS), $(call create-pkgconfig,$(dir $@),$(word 1, $(subst :, ,$(pkg))),$(word 2, $(subst :, ,$(pkg)))))
++	touch $@
++
++$(MESON_OUT_DIR)/.build.timestamp: MESON_GEN_NINJA:=$(MESON_GEN_NINJA)
++$(MESON_OUT_DIR)/.build.timestamp: MESON_BUILD:=$(MESON_BUILD)
++$(MESON_OUT_DIR)/.build.timestamp: $(MESON_GEN_FILES_TARGET) $(link_deps)
++	rm -rf $(dir $@)
++	mkdir -p $(dir $@)
++	mkdir -p $(dir $@)/build
++	# Meson will update timestamps in sources directory, continuously retriggering the build
++	# even if nothing changed. Copy sources into intermediate dir to avoid this effect.
++	cp -r $(LIBCAMERA_TOP)/* $(dir $@)
++	$(MESON_GEN_NINJA)
++	$(MESON_BUILD)
++	touch $@
++
++$(MESON_OUT_DIR)/install/.install.timestamp: MESON_BUILD:=$(MESON_BUILD)
++$(MESON_OUT_DIR)/install/.install.timestamp: $(MESON_OUT_DIR)/.build.timestamp
++	rm -rf $(dir $@)
++	mkdir -p $(dir $@)
++	DESTDIR=$(AOSP_ABSOLUTE_PATH)/$(dir $@) $(MESON_BUILD) install
++	touch $@
++
++$(LIBCAMERA_BINS): $(MESON_OUT_DIR)/install/.install.timestamp
++	echo "Build $@"
++	touch $@
+diff --git a/meson.build b/meson.build
+index 56910698..2303f752 100644
+--- a/meson.build
++++ b/meson.build
+@@ -74,6 +74,10 @@ if cc.has_header_symbol('stdlib.h', 'secure_getenv', prefix : '#define _GNU_SOUR
+     config_h.set('HAVE_SECURE_GETENV', 1)
+ endif
+ 
++if get_option('allow_unsigned_ipas_in_process')
++    config_h.set('ALLOW_UNSIGNED_IPAS_IN_PROCESS', 1)
++endif
++
+ common_arguments = [
+     '-Wshadow',
+     '-include', meson.current_build_dir() / 'config.h',
+@@ -95,14 +99,6 @@ if cc.get_id() == 'clang'
+         ]
+     endif
+ 
+-    # Use libc++ by default if available instead of libstdc++ when compiling
+-    # with clang.
+-    if cc.find_library('libc++', required: false).found()
+-        cpp_arguments += [
+-            '-stdlib=libc++',
+-        ]
+-    endif
+-
+     cpp_arguments += [
+         '-Wextra-semi',
+         '-Wthread-safety',
+diff --git a/meson_options.txt b/meson_options.txt
+index f1d67808..77b21b9a 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -64,3 +64,8 @@ option('pycamera',
+         type : 'feature',
+         value : 'disabled',
+         description : 'Enable libcamera Python bindings (experimental)')
++
++option('allow_unsigned_ipas_in_process',
++        type : 'boolean',
++        value : false,
++        description : 'Allow unsigned IPAs to run in libcamera\'s address space')
+diff --git a/src/android/camera_capabilities.cpp b/src/android/camera_capabilities.cpp
+index 64bd8dde..0fe9525b 100644
+--- a/src/android/camera_capabilities.cpp
++++ b/src/android/camera_capabilities.cpp
+@@ -374,14 +374,20 @@ void CameraCapabilities::computeHwLevel(
+ 	camera_metadata_enum_android_info_supported_hardware_level
+ 		hwLevel = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_FULL;
+ 
+-	if (!caps.count(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR))
++	if (!caps.count(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR)) {
++		LOG(HAL, Info) << noFull << "missing manual sensor";
+ 		hwLevel = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
++    }
+ 
+-	if (!caps.count(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_POST_PROCESSING))
++	if (!caps.count(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_POST_PROCESSING)) {
++		LOG(HAL, Info) << noFull << "missing manual post processing";
+ 		hwLevel = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
++    }
+ 
+-	if (!caps.count(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BURST_CAPTURE))
++	if (!caps.count(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BURST_CAPTURE)) {
++		LOG(HAL, Info) << noFull << "missing burst capture";
+ 		hwLevel = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
++    }
+ 
+ 	found = staticMetadata_->getEntry(ANDROID_SYNC_MAX_LATENCY, &entry);
+ 	if (!found || *entry.data.i32 != 0) {
+diff --git a/src/android/camera_hal_config.cpp b/src/android/camera_hal_config.cpp
+index bacfe4b9..c06c993d 100644
+--- a/src/android/camera_hal_config.cpp
++++ b/src/android/camera_hal_config.cpp
+@@ -6,7 +6,6 @@
+  */
+ #include "camera_hal_config.h"
+ 
+-#include <filesystem>
+ #include <stdlib.h>
+ #include <string>
+ 
+@@ -160,13 +159,7 @@ CameraHalConfig::CameraHalConfig()
+  */
+ int CameraHalConfig::parseConfigurationFile()
+ {
+-	std::filesystem::path filePath = LIBCAMERA_SYSCONF_DIR;
+-	filePath /= "camera_hal.yaml";
+-	if (!std::filesystem::is_regular_file(filePath)) {
+-		LOG(HALConfig, Debug)
+-			<< "Configuration file: \"" << filePath << "\" not found";
+-		return -ENOENT;
+-	}
++	std::string filePath = LIBCAMERA_SYSCONF_DIR "/camera_hal.yaml";
+ 
+ 	File file(filePath);
+ 	if (!file.open(File::OpenModeFlag::ReadOnly)) {
+diff --git a/src/android/camera_hal_manager.cpp b/src/android/camera_hal_manager.cpp
+index 7512cc4e..9e1145d5 100644
+--- a/src/android/camera_hal_manager.cpp
++++ b/src/android/camera_hal_manager.cpp
+@@ -140,7 +140,8 @@ void CameraHalManager::cameraAdded(std::shared_ptr<Camera> cam)
+ 	 */
+ 	if (!isCameraExternal && !halConfig_.exists()) {
+ 		LOG(HAL, Error)
+-			<< "HAL configuration file is mandatory for internal cameras";
++			<< "HAL configuration file is mandatory for internal cameras"
++            << "camera NOT loaded: \"" << cam->id() << "\"";
+ 		return;
+ 	}
+ 
+diff --git a/src/ipa/libipa/camera_sensor_helper.cpp b/src/ipa/libipa/camera_sensor_helper.cpp
+index 35056bec..1d9a45a7 100644
+--- a/src/ipa/libipa/camera_sensor_helper.cpp
++++ b/src/ipa/libipa/camera_sensor_helper.cpp
+@@ -476,6 +476,17 @@ public:
+ };
+ REGISTER_CAMERA_SENSOR_HELPER("ov5693", CameraSensorHelperOv5693)
+ 
++class CameraSensorHelperOv8858 : public CameraSensorHelper
++{
++public:
++	CameraSensorHelperOv8858()
++	{
++		gainType_ = AnalogueGainLinear;
++		gainConstants_.linear = { 1, 0, 0, 128 };
++	}
++};
++REGISTER_CAMERA_SENSOR_HELPER("m00_f_ov8858", CameraSensorHelperOv8858)
++
+ class CameraSensorHelperOv8865 : public CameraSensorHelper
+ {
+ public:
+diff --git a/src/ipa/raspberrypi/controller/pwl.cpp b/src/ipa/raspberrypi/controller/pwl.cpp
+index c59f5fa1..ca38b005 100644
+--- a/src/ipa/raspberrypi/controller/pwl.cpp
++++ b/src/ipa/raspberrypi/controller/pwl.cpp
+@@ -168,7 +168,7 @@ Pwl Pwl::compose(Pwl const &other, const double eps) const
+ 	while (thisSpan != (int)points_.size() - 1) {
+ 		double dx = points_[thisSpan + 1].x - points_[thisSpan].x,
+ 		       dy = points_[thisSpan + 1].y - points_[thisSpan].y;
+-		if (abs(dy) > eps &&
++		if (std::abs(dy) > eps &&
+ 		    otherSpan + 1 < (int)other.points_.size() &&
+ 		    points_[thisSpan + 1].y >=
+ 			    other.points_[otherSpan + 1].x + eps) {
+@@ -181,7 +181,7 @@ Pwl Pwl::compose(Pwl const &other, const double eps) const
+ 				 points_[thisSpan].y) *
+ 					dx / dy;
+ 			thisY = other.points_[++otherSpan].x;
+-		} else if (abs(dy) > eps && otherSpan > 0 &&
++		} else if (std::abs(dy) > eps && otherSpan > 0 &&
+ 			   points_[thisSpan + 1].y <=
+ 				   other.points_[otherSpan - 1].x - eps) {
+ 			/*
+diff --git a/src/ipa/rkisp1/algorithms/agc.cpp b/src/ipa/rkisp1/algorithms/agc.cpp
+index 04062a36..2c11a39d 100644
+--- a/src/ipa/rkisp1/algorithms/agc.cpp
++++ b/src/ipa/rkisp1/algorithms/agc.cpp
+@@ -74,7 +74,13 @@ int Agc::configure(IPAContext &context, const IPACameraSensorInfo &configInfo)
+ {
+ 	/* Configure the default exposure and gain. */
+ 	context.activeState.agc.gain = std::max(context.configuration.agc.minAnalogueGain, kMinAnalogueGain);
+-	context.activeState.agc.exposure = 10ms / context.configuration.sensor.lineDuration;
++	/* TODO(Bug 159): Explicit division of ticks (e.g., `x.get<std::nano>() /
++	 * y.get<std::nano>()` as opposed to `x / y`) is a workaround for
++	 * LLVM bug 41130 and should be reverted once we no longer target
++	 * Android 11 / sdk30 since it compromises unit safety and readability. */
++	constexpr libcamera::utils::Duration ten_millis(10ms);
++	long double exposure = ten_millis.get<std::nano>() / context.configuration.sensor.lineDuration.get<std::nano>();
++	context.activeState.agc.exposure = uint32_t(exposure);
+ 
+ 	/*
+ 	 * According to the RkISP1 documentation:
+@@ -211,17 +217,25 @@ void Agc::computeExposure(IPAContext &context, IPAFrameContext &frameContext,
+ 	/*
+ 	 * Push the shutter time up to the maximum first, and only then
+ 	 * increase the gain.
++	 *
++	 * TODO(Bug 159): Explicit division of ticks (e.g., `x.get<std::nano>() /
++	 * y.get<std::nano>()` as opposed to `x / y`) is a workaround for
++	 * LLVM bug 41130 and should be reverted once we no longer target
++	 * Android 11 / sdk30 since it compromises unit safety and readability.
+ 	 */
+-	utils::Duration shutterTime = std::clamp<utils::Duration>(exposureValue / minAnalogueGain,
++	utils::Duration shutterTimeUnclamped(exposureValue.get<std::nano>() / minAnalogueGain);
++	utils::Duration shutterTime = std::clamp<utils::Duration>(shutterTimeUnclamped,
+ 								  minShutterSpeed, maxShutterSpeed);
+-	double stepGain = std::clamp(exposureValue / shutterTime,
++	double stepGainUnclamped = exposureValue.get<std::nano>() / shutterTime.get<std::nano>();
++	double stepGain = std::clamp(stepGainUnclamped,
+ 				     minAnalogueGain, maxAnalogueGain);
+ 	LOG(RkISP1Agc, Debug) << "Divided up shutter and gain are "
+ 			      << shutterTime << " and "
+ 			      << stepGain;
+ 
+ 	/* Update the estimated exposure and gain. */
+-	activeState.agc.exposure = shutterTime / configuration.sensor.lineDuration;
++	activeState.agc.exposure = uint32_t(shutterTime.get<std::nano>() /
++		configuration.sensor.lineDuration.get<std::nano>());
+ 	activeState.agc.gain = stepGain;
+ }
+ 
+diff --git a/src/ipa/rkisp1/rkisp1.cpp b/src/ipa/rkisp1/rkisp1.cpp
+index ba3c547e..d3730909 100644
+--- a/src/ipa/rkisp1/rkisp1.cpp
++++ b/src/ipa/rkisp1/rkisp1.cpp
+@@ -101,6 +101,13 @@ const ControlInfoMap::Map rkisp1Controls{
+ 	{ &controls::Saturation, ControlInfo(0.0f, 1.993f) },
+ 	{ &controls::Sharpness, ControlInfo(0.0f, 10.0f, 1.0f) },
+ 	{ &controls::draft::NoiseReductionMode, ControlInfo(controls::draft::NoiseReductionModeValues) },
++    /* libcamera requires a fixed value for minimum frame duration,
++     * but this depends on the frame size and the rkisp1 device datasheets
++     * measure this in pixels per second. Neither the datasheets nor the driver
++     * specify a maximum. The minimum below is for 1920x1920. The maximum
++     * corresponds to two seconds. */
++    { &controls::FrameDurationLimits, ControlInfo(48505, 2000000) },
++    { &controls::draft::MaxLatency, ControlInfo(0) },
+ };
+ 
+ } /* namespace */
+diff --git a/src/libcamera/base/log.cpp b/src/libcamera/base/log.cpp
+index 55fbd7b0..97a7b6c6 100644
+--- a/src/libcamera/base/log.cpp
++++ b/src/libcamera/base/log.cpp
+@@ -464,6 +464,7 @@ Logger *Logger::instance()
+  */
+ void Logger::write(const LogMessage &msg)
+ {
++    syslog(LOG_WARNING, "%s", msg.msg().c_str());
+ 	std::shared_ptr<LogOutput> output = std::atomic_load(&output_);
+ 	if (!output)
+ 		return;
+@@ -625,8 +626,11 @@ void Logger::parseLogFile()
+ void Logger::parseLogLevels()
+ {
+ 	const char *debug = utils::secure_getenv("LIBCAMERA_LOG_LEVELS");
+-	if (!debug)
++	if (!debug) {
++        syslog(LOG_ERR, "Could not find LIBCAMERA_LOG_LEVELS in env");
+ 		return;
++    }
++    syslog(LOG_WARNING, "LIBCAMERA_LOG_LEVELS is %s", debug);
+ 
+ 	for (const char *pair = debug; *debug != '\0'; pair = debug) {
+ 		const char *comma = strchrnul(debug, ',');
+diff --git a/src/libcamera/camera_sensor_properties.cpp b/src/libcamera/camera_sensor_properties.cpp
+index e5f27f06..d0757c15 100644
+--- a/src/libcamera/camera_sensor_properties.cpp
++++ b/src/libcamera/camera_sensor_properties.cpp
+@@ -146,6 +146,20 @@ const CameraSensorProperties *CameraSensorProperties::get(const std::string &sen
+ 				 */
+ 			},
+ 		} },
++		{ "m00_f_ov8858", {
++			.unitCellSize = { 1200, 1200 },
++			.testPatternModes = {
++				{ controls::draft::TestPatternModeOff, 0 },
++				{ controls::draft::TestPatternModeColorBars, 1 },
++				/*
++				 * No best corresponding test pattern for:
++				 * 1: "Vertical Color Bar Type 1",
++				 * 2: "Vertical Color Bar Type 2",
++				 * 3: "Vertical Color Bar Type 3",
++				 * 4: "Vertical Color Bar Type 4"
++				 */
++			},
++		} },
+ 		{ "ov8865", {
+ 			.unitCellSize = { 1400, 1400 },
+ 			.testPatternModes = {
+diff --git a/src/libcamera/ipa_manager.cpp b/src/libcamera/ipa_manager.cpp
+index 030ef43f..7f8ee415 100644
+--- a/src/libcamera/ipa_manager.cpp
++++ b/src/libcamera/ipa_manager.cpp
+@@ -114,10 +114,20 @@ IPAManager::IPAManager()
+ 		LOG(IPAManager, Warning) << "Public key not valid";
+ #endif
+ 
++#if ALLOW_UNSIGNED_IPAS_IN_PROCESS
++    LOG(IPAManager, Warning)
++        << "All IPAs running in-process without signature verification."
++        << " This is recommended only for tightly-managed installs"
++        << " in contexts where both signature verification and out-of-process"
++        << " execution are infeasible, such as Android HALs.";
++#endif
++
+ 	unsigned int ipaCount = 0;
+ 
+ 	/* User-specified paths take precedence. */
+ 	const char *modulePaths = utils::secure_getenv("LIBCAMERA_IPA_MODULE_PATH");
++	LOG(IPAManager, Warning)
++			<< "LIBCAMERA_IPA_MODULE_PATH: " << modulePaths;
+ 	if (modulePaths) {
+ 		for (const auto &dir : utils::split(modulePaths, ":")) {
+ 			if (dir.empty())
+@@ -281,6 +291,9 @@ IPAModule *IPAManager::module(PipelineHandler *pipe, uint32_t minVersion,
+ 
+ bool IPAManager::isSignatureValid([[maybe_unused]] IPAModule *ipa) const
+ {
++#if ALLOW_UNSIGNED_IPAS_IN_PROCESS
++    return true;
++#endif
+ #if HAVE_IPA_PUBKEY
+ 	char *force = utils::secure_getenv("LIBCAMERA_IPA_FORCE_ISOLATION");
+ 	if (force && force[0] != '\0') {
+diff --git a/src/libcamera/meson.build b/src/libcamera/meson.build
+index 5f39d2e2..0494e808 100644
+--- a/src/libcamera/meson.build
++++ b/src/libcamera/meson.build
+@@ -65,7 +65,12 @@ subdir('ipa')
+ subdir('pipeline')
+ subdir('proxy')
+ 
+-libdl = cc.find_library('dl')
++null_dep = dependency('', required : false)
++
++libdl = null_dep
++if not cc.has_function('dlopen')
++    libdl = cc.find_library('dl')
++endif
+ libudev = dependency('libudev', required : false)
+ libyaml = dependency('yaml-0.1', required : false)
+ 
+diff --git a/src/libcamera/pipeline/rkisp1/rkisp1.cpp b/src/libcamera/pipeline/rkisp1/rkisp1.cpp
+index 455ee2a0..cad773bf 100644
+--- a/src/libcamera/pipeline/rkisp1/rkisp1.cpp
++++ b/src/libcamera/pipeline/rkisp1/rkisp1.cpp
+@@ -994,15 +994,23 @@ int PipelineHandlerRkISP1::initLinks(Camera *camera,
+ int PipelineHandlerRkISP1::createCamera(MediaEntity *sensor)
+ {
+ 	int ret;
++    
++    LOG(RkISP1, Info) << "Entered createCamera()";
++
+ 
+ 	std::unique_ptr<RkISP1CameraData> data =
+ 		std::make_unique<RkISP1CameraData>(this, &mainPath_,
+ 						   hasSelfPath_ ? &selfPath_ : nullptr);
++    LOG(RkISP1, Info) << "Created RkISP1CameraData";
+ 
+ 	data->sensor_ = std::make_unique<CameraSensor>(sensor);
++    LOG(RkISP1, Info) << "Created CameraSensor";
+ 	ret = data->sensor_->init();
+-	if (ret)
++    LOG(RkISP1, Info) << "Initialized CameraSensor";
++	if (ret) {
++        LOG(RkISP1, Error) << "Finished (failure 1) createCamera()";
+ 		return ret;
++    }
+ 
+ 	/* Initialize the camera properties. */
+ 	data->properties_ = data->sensor_->properties();
+@@ -1024,8 +1032,10 @@ int PipelineHandlerRkISP1::createCamera(MediaEntity *sensor)
+ 				 &DelayedControls::applyControls);
+ 
+ 	ret = data->loadIPA(media_->hwRevision());
+-	if (ret)
++	if (ret) {
++        LOG(RkISP1, Error) << "Finished (failure 2) createCamera()";
+ 		return ret;
++    }
+ 
+ 	std::set<Stream *> streams{
+ 		&data->mainPathStream_,
+@@ -1036,6 +1046,8 @@ int PipelineHandlerRkISP1::createCamera(MediaEntity *sensor)
+ 		Camera::create(std::move(data), id, streams);
+ 	registerCamera(std::move(camera));
+ 
++    LOG(RkISP1, Info) << "Finished (success) createCamera()";
++
+ 	return 0;
+ }
+ 
+@@ -1063,6 +1075,7 @@ bool PipelineHandlerRkISP1::match(DeviceEnumerator *enumerator)
+ 	hasSelfPath_ = !!media_->getEntityByName("rkisp1_selfpath");
+ 
+ 	/* Create the V4L2 subdevices we will need. */
++	LOG(RkISP1, Info) << "Creating rkisp1_isp subdevice";
+ 	isp_ = V4L2Subdevice::fromEntityName(media_, "rkisp1_isp");
+ 	if (isp_->open() < 0)
+ 		return false;
+diff --git a/src/libcamera/pipeline/rkisp1/rkisp1_path.cpp b/src/libcamera/pipeline/rkisp1/rkisp1_path.cpp
+index 2d38f0fb..23de6ce8 100644
+--- a/src/libcamera/pipeline/rkisp1/rkisp1_path.cpp
++++ b/src/libcamera/pipeline/rkisp1/rkisp1_path.cpp
+@@ -33,10 +33,12 @@ bool RkISP1Path::init(MediaDevice *media)
+ 	std::string resizer = std::string("rkisp1_resizer_") + name_ + "path";
+ 	std::string video = std::string("rkisp1_") + name_ + "path";
+ 
++    LOG(RkISP1, Debug) << "Creating " << resizer;
+ 	resizer_ = V4L2Subdevice::fromEntityName(media, resizer);
+ 	if (resizer_->open() < 0)
+ 		return false;
+ 
++    LOG(RkISP1, Debug) << "Creating " << video;
+ 	video_ = V4L2VideoDevice::fromEntityName(media, video);
+ 	if (video_->open() < 0)
+ 		return false;
+diff --git a/src/libcamera/v4l2_subdevice.cpp b/src/libcamera/v4l2_subdevice.cpp
+index 15e8206a..fb6c1d3a 100644
+--- a/src/libcamera/v4l2_subdevice.cpp
++++ b/src/libcamera/v4l2_subdevice.cpp
+@@ -388,11 +388,14 @@ int V4L2Subdevice::getSelection(unsigned int pad, unsigned int target,
+ 	sel.target = target;
+ 	sel.flags = 0;
+ 
++
++
+ 	int ret = ioctl(VIDIOC_SUBDEV_G_SELECTION, &sel);
+ 	if (ret < 0) {
+ 		LOG(V4L2, Error)
+ 			<< "Unable to get rectangle " << target << " on pad "
+-			<< pad << ": " << strerror(-ret);
++			<< pad << ": " << strerror(-ret)
++            << "  device path: " << devicePath() << "  device node: " << deviceNode();
+ 		return ret;
+ 	}
+ 

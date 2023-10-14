@@ -753,6 +753,7 @@ int CameraDevice::configureStreams(camera3_stream_configuration_t *stream_list)
 				<< camera_->id() << "'";
 		return ret;
 	}
+	LOG(HAL, Debug) << "CAMERA CONFIGURED SUCCESSFULLY, ABOUT TO ENUMERATE cameraStreams";
 
 	/*
 	 * Configure the HAL CameraStream instances using the associated
@@ -765,9 +766,11 @@ int CameraDevice::configureStreams(camera3_stream_configuration_t *stream_list)
 			LOG(HAL, Error) << "Failed to configure camera stream";
 			return ret;
 		}
+		LOG(HAL, Debug) << "CONFIGURED CAMERA STREAM";
 	}
 
 	config_ = std::move(config);
+	LOG(HAL, Debug) << "CameraDevice::configureStreams() exiting successfully";
 	return 0;
 }
 

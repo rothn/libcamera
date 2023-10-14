@@ -133,6 +133,9 @@ int CameraStream::configure()
 
 	camera3Stream_->max_buffers = configuration().bufferCount;
 
+    //FrameBuffer *fb = getBuffer();
+	//putBuffer(fb);
+
 	return 0;
 }
 

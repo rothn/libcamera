@@ -1002,10 +1002,13 @@ int Camera::configure(CameraConfiguration *config)
 {
 	Private *const d = _d();
 
+	LOG(Camera, Debug) << "CONFIGURING CAMERA";
+
 	int ret = d->isAccessAllowed(Private::CameraAcquired,
 				     Private::CameraConfigured);
 	if (ret < 0)
 		return ret;
+	LOG(Camera, Debug) << "ACCESS IS ALLOWED";
 
 	for (auto it : *config)
 		it.setStream(nullptr);
@@ -1045,6 +1048,7 @@ int Camera::configure(CameraConfiguration *config)
 	}
 
 	d->setState(Private::CameraConfigured);
+	LOG(Camera, Debug) << "Camera::configure() exiting successfully";
 
 	return 0;
 }

@@ -82,6 +82,7 @@ MESON_GEN_NINJA := \
 	-Dsysconfdir=/vendor/etc                                                 \
 	-Dtest=false                                                             \
 	-Dwerror=false                                                           \
+	-Ddocumentation=disabled                                                 \
 	-Dallow_unsigned_ipas_in_process=true
 
 MESON_BUILD := PATH=/usr/bin:/bin:/sbin:$$PATH ninja -C $(MESON_OUT_DIR)/build

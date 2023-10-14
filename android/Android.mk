@@ -10,11 +10,11 @@ ifneq ($(filter true, $(BOARD_LIBCAMERA_USES_MESON_BUILD)),)
 
 LOCAL_PATH := $(call my-dir)
 LIBCAMERA_TOP := $(dir $(LOCAL_PATH))
-LIBCAMERA_MESON_VERSION := .0.0.1
+LIBCAMERA_MESON_VERSION := .0.0.2
 
 include $(CLEAR_VARS)
 
-LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl libyaml
+LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl libyaml libhardware
 MESON_GEN_PKGCONFIGS := libexif libjpeg yaml-0.1 libyuv dl
 
 ifeq ($(TARGET_IS_64_BIT),true)

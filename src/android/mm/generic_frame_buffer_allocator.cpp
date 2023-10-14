@@ -94,17 +94,26 @@ PlatformFrameBufferAllocator::Private::~Private()
 		gralloc_close(allocDevice_);
 }
 
+extern "C" {
+int hw_get_module(const char* id, const hw_module_t** module);
+};
 std::unique_ptr<libcamera::FrameBuffer>
 PlatformFrameBufferAllocator::Private::allocate(int halPixelFormat,
 						const libcamera::Size &size,
 						uint32_t usage)
 {
 	if (!allocDevice_) {
-		int ret = gralloc_open(hardwareModule_, &allocDevice_);
+		struct hw_module_t *grallocHardwareModule = nullptr;
+		int ret = hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (const struct hw_module_t **)&grallocHardwareModule);
+		if (ret) {
+			LOG(HAL, Fatal) << "hw_get_module() failed: " << ret;
+		}
+		ret = gralloc_open(grallocHardwareModule, &allocDevice_);
 		if (ret) {
 			LOG(HAL, Fatal) << "gralloc_open() failed: " << ret;
 			return nullptr;
 		}
+		LOG(HAL, Debug) << "gralloc device: " << allocDevice_->common.module->name;
 	}
 
 	int stride = 0;

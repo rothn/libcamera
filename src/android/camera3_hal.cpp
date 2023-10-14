@@ -70,23 +70,7 @@ static int hal_init()
  */
 
 static int hal_dev_open(const hw_module_t *module, const char *name,
-			hw_device_t **device)
-{
-	LOG(HAL, Debug) << "Open camera " << name;
-
-	int id = atoi(name);
-
-	auto [camera, ret] = CameraHalManager::instance()->open(id, module);
-	if (!camera) {
-		LOG(HAL, Error)
-			<< "Failed to open camera module '" << id << "'";
-		return ret == -EBUSY ? -EUSERS : ret;
-	}
-
-	*device = &camera->camera3Device()->common;
-
-	return 0;
-}
+			hw_device_t **device);
 
 static struct hw_module_methods_t hal_module_methods = {
 	.open = hal_dev_open,
@@ -114,3 +98,28 @@ camera_module_t HAL_MODULE_INFO_SYM = {
 	.init = hal_init,
 	.reserved = {},
 };
+
+static int hal_dev_open(const hw_module_t *module, const char *name,
+			hw_device_t **device)
+{
+	if (module != &HAL_MODULE_INFO_SYM.common) {
+		LOG(HAL, Error) << "Invalid module";
+		return -EINVAL;
+	}
+	LOG(HAL, Debug) << "Open camera " << name;
+
+	int id = atoi(name);
+
+	auto [camera, ret] = CameraHalManager::instance()->open(id, module);
+	if (!camera) {
+		LOG(HAL, Error)
+			<< "Failed to open camera module '" << id << "'";
+		return ret == -EBUSY ? -EUSERS : ret;
+	}
+
+	*device = &camera->camera3Device()->common;
+
+	return 0;
+}
+
+
